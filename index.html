@@ -8,15 +8,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   <style>
-    .capitalize-label {
-      text-transform: capitalize;
-    }
-    .card-transition {
-      transition: all 0.2s ease-in-out;
-    }
-    .card-transition:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    .capitalize-label { text-transform: capitalize; }
+    .card-transition { transition: all 0.2s ease-in-out; }
+    .card-transition:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    .syncing { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    
+    /* Fixed container to prevent clipping */
+    .chart-wrapper {
+      position: relative;
+      height: 350px; /* Force a height */
+      width: 100%;
     }
   </style>
 </head>
@@ -28,7 +30,7 @@
             <h1 class="text-3xl font-black tracking-tight">Knoxville Budget</h1>
             <p id="lastSync" class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 italic">Waiting for sync...</p>
         </div>
-        <button id="syncBtn" onclick="syncWithSheet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95">
+        <button id="syncBtn" onclick="syncWithSheet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95">
             <span id="btnText">Sync from Sheets</span>
         </button>
     </div>
@@ -48,8 +50,10 @@
       </div>
     </div>
 
-    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-8">
-        <div style="height: 300px;"><canvas id="budgetChart"></canvas></div>
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8">
+        <div class="chart-wrapper">
+            <canvas id="budgetChart"></canvas>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -85,23 +89,39 @@
                 data: [0, 0, 0], 
                 backgroundColor: ['#10b981', '#f43f5e', '#6366f1'], 
                 borderRadius: 12,
-                barThickness: 60
+                barThickness: 'flex',
+                maxBarThickness: 80
             }] 
         },
         options: { 
-            responsive: true, maintainAspectRatio: false, 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            layout: {
+                padding: {
+                    top: 30 // Extra space at the top so labels don't get cut off
+                }
+            },
             plugins: { 
                 legend: { display: false }, 
                 datalabels: { 
-                    anchor: 'end', align: 'top', 
-                    offset: 4,
+                    anchor: 'end', 
+                    align: 'top', 
+                    offset: 5,
                     formatter: (v) => `$${Math.round(v).toLocaleString()}`, 
                     font: { weight: 'bold', size: 14 },
                     color: '#475569'
                 } 
             },
             scales: { 
-                y: { display: false, beginAtZero: true },
+                y: { 
+                    display: false, 
+                    beginAtZero: true,
+                    suggestedMax: function(context) {
+                        // Dynamically add 15% headroom to the Y-axis
+                        const max = Math.max(...context.chart.data.datasets[0].data);
+                        return max * 1.15;
+                    }
+                },
                 x: { grid: { display: false }, border: { display: false } }
             }
         }
@@ -109,11 +129,13 @@
     }
 
     async function syncWithSheet() {
+      const btn = document.getElementById('syncBtn');
       const btnText = document.getElementById('btnText');
       btnText.innerText = 'Syncing...';
+      btn.classList.add('syncing');
       
       try {
-        const response = await fetch(`${sheetUrl}&cachebust=${Date.now()}`);
+        const response = await fetch(`${sheetUrl}&cachebust=${new Date().getTime()}`);
         const csvText = await response.text();
         const rows = csvText.split(/\r?\n/).filter(row => row.trim().length > 0).slice(1); 
 
@@ -126,7 +148,6 @@
                 const value = parseFloat(cols[1].replace(/[$,"]/g, '').trim()) || 0;
                 
                 const lowerLabel = label.toLowerCase();
-                // FIXED MAPPING LOGIC:
                 if (lowerLabel.includes('husband') || lowerLabel.includes('wife') || lowerLabel.includes('income')) {
                     budgetData.income.push({ label, value });
                 } else {
@@ -142,14 +163,16 @@
         console.error("Sync Error:", e);
         btnText.innerText = 'Sync Error';
       } finally {
-        setTimeout(() => { btnText.innerText = 'Sync from Sheets'; }, 1000);
+        setTimeout(() => { 
+            btnText.innerText = 'Sync from Sheets'; 
+            btn.classList.remove('syncing');
+        }, 800);
       }
     }
 
     function renderLists() {
         const incDiv = document.getElementById('incomeList');
         const expDiv = document.getElementById('expenseList');
-        
         incDiv.innerHTML = budgetData.income.map(item => createRow(item, 'income')).join('');
         expDiv.innerHTML = budgetData.expenses.map(item => createRow(item, 'expense')).join('');
     }
