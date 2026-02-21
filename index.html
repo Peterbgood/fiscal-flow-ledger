@@ -7,31 +7,45 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <style>
+    /* This rule ensures every label starts with a capital letter */
+    .capitalize-label {
+      text-transform: capitalize;
+    }
+    /* Smooth transitions for a more "app-like" feel */
+    .card-transition {
+      transition: all 0.2s ease-in-out;
+    }
+    .card-transition:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+  </style>
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="bg-slate-50 font-sans text-slate-900">
   <div class="container mx-auto px-4 py-6 max-w-4xl">
     
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Knoxville Budget</h1>
-            <p id="lastSync" class="text-xs text-slate-500 font-medium uppercase tracking-widest mt-1">Initializing...</p>
+            <h1 class="text-3xl font-black tracking-tight">Knoxville Budget</h1>
+            <p id="lastSync" class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 italic">Waiting for sync...</p>
         </div>
-        <button id="syncBtn" onclick="syncWithSheet()" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95">
-            <span id="btnText">Sync from Google Sheets</span>
+        <button id="syncBtn" onclick="syncWithSheet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95">
+            <span id="btnText">Sync from Sheets</span>
         </button>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <p class="text-xs font-bold text-slate-400 uppercase mb-1">Monthly Net (After Tax)</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monthly Net (After Tax)</p>
           <p class="text-3xl font-black text-emerald-600" id="monthlyNet">$0</p>
       </div>
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <p class="text-xs font-bold text-slate-400 uppercase mb-1">Monthly Expenses</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monthly Expenses</p>
           <p class="text-3xl font-black text-rose-500" id="totalBills">$0</p>
       </div>
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <p class="text-xs font-bold text-slate-400 uppercase mb-1">Monthly Surplus</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monthly Surplus</p>
           <p class="text-3xl font-black text-indigo-600" id="surplus">$0</p>
       </div>
     </div>
@@ -42,11 +56,15 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <section>
-            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">💰 Income</h2>
+            <h2 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="p-1 bg-emerald-100 text-emerald-600 rounded">💰</span> Income Sources
+            </h2>
             <div id="incomeList" class="space-y-3"></div>
         </section>
         <section>
-            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">📉 Expenses</h2>
+            <h2 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="p-1 bg-rose-100 text-rose-600 rounded">📉</span> Monthly Expenses
+            </h2>
             <div id="expenseList" class="grid grid-cols-1 gap-3"></div>
         </section>
     </div>
@@ -65,24 +83,42 @@
         type: 'bar',
         data: { 
             labels: ['Net Income', 'Expenses', 'Surplus'], 
-            datasets: [{ data: [0, 0, 0], backgroundColor: ['#059669', '#e11d48', '#4f46e5'], borderRadius: 12 }] 
+            datasets: [{ 
+                data: [0, 0, 0], 
+                backgroundColor: ['#10b981', '#f43f5e', '#6366f1'], 
+                borderRadius: 12,
+                barThickness: 60
+            }] 
         },
         options: { 
             responsive: true, maintainAspectRatio: false, 
-            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', formatter: (v) => `$${Math.round(v).toLocaleString()}`, font: { weight: 'bold' } } },
-            scales: { y: { display: false, beginAtZero: true } }
+            plugins: { 
+                legend: { display: false }, 
+                datalabels: { 
+                    anchor: 'end', align: 'top', 
+                    offset: 4,
+                    formatter: (v) => `$${Math.round(v).toLocaleString()}`, 
+                    font: { weight: 'bold', size: 14, family: 'sans-serif' },
+                    color: '#475569'
+                } 
+            },
+            scales: { 
+                y: { display: false, beginAtZero: true },
+                x: { grid: { display: false }, border: { display: false } }
+            }
         }
       });
     }
 
     async function syncWithSheet() {
       const btnText = document.getElementById('btnText');
-      btnText.innerText = 'Updating...';
+      btnText.innerText = 'Syncing...';
       
       try {
         const response = await fetch(`${sheetUrl}&cachebust=${Date.now()}`);
         const csvText = await response.text();
-        const rows = csvText.split(/\r?\n/).slice(1); // Skip header row
+        // Split by lines and filter out empty rows
+        const rows = csvText.split(/\r?\n/).filter(row => row.trim().length > 0).slice(1); 
 
         budgetData = { income: [], expenses: [] };
 
@@ -102,11 +138,12 @@
 
         renderLists();
         updateDisplay();
-        document.getElementById('lastSync').innerText = `Last Updated: ${new Date().toLocaleTimeString()}`;
+        document.getElementById('lastSync').innerText = `Synced: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
       } catch (e) {
-        console.error(e);
+        console.error("Sync Error:", e);
+        btnText.innerText = 'Sync Error';
       } finally {
-        btnText.innerText = 'Sync from Google Sheets';
+        setTimeout(() => { btnText.innerText = 'Sync from Sheets'; }, 1000);
       }
     }
 
@@ -119,16 +156,19 @@
     }
 
     function createRow(item, type) {
+        // We add the 'capitalize-label' class here
         return `
-            <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                <span class="text-sm font-bold text-slate-600">${item.label}</span>
-                <span class="font-mono font-bold ${type === 'income' ? 'text-emerald-600' : 'text-slate-900'}">$${item.value.toLocaleString()}</span>
+            <div class="card-transition flex justify-between items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <span class="text-sm font-bold text-slate-600 capitalize-label">${item.label.toLowerCase()}</span>
+                <span class="font-mono font-black ${type === 'income' ? 'text-emerald-600' : 'text-slate-900'}">
+                    $${item.value.toLocaleString()}
+                </span>
             </div>
         `;
     }
 
     function updateDisplay() {
-      const taxRate = 0.7253;
+      const taxRate = 0.7253; // TN Average
       const totalGrossIncome = budgetData.income.reduce((sum, item) => sum + item.value, 0);
       const monthlyNet = (totalGrossIncome * taxRate) / 12;
       const totalExpenses = budgetData.expenses.reduce((sum, item) => sum + item.value, 0);
