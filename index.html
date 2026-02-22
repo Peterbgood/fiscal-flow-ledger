@@ -14,25 +14,60 @@
     .syncing { animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     
-    /* Fixed container to prevent clipping */
     .chart-wrapper {
       position: relative;
-      height: 350px; /* Force a height */
+      height: 350px;
       width: 100%;
+    }
+
+    /* Transition for unlocking */
+    #lockedContent { display: none; }
+    .shake { animation: shake 0.4s ease-in-out; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
     }
   </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900">
-  <div class="container mx-auto px-4 py-6 max-w-4xl">
+
+  <div id="pinOverlay" class="fixed inset-0 bg-slate-900 flex items-center justify-center z-[100] transition-opacity duration-500">
+    <div id="pinCard" class="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm w-full mx-4">
+        <div class="mb-6">
+            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2-2 0 002-2v-6a2-2 0 00-2-2H6a2-2 0 00-2 2v6a2-2 0 002 2zm10-10V7a4-4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800">Secure Access</h2>
+            <p class="text-slate-500 text-sm mt-2">Enter PIN to view Knoxville Budget</p>
+        </div>
+        <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" autofocus
+            class="w-full text-center text-4xl tracking-[0.5em] font-bold p-4 border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all mb-4"
+            placeholder="****">
+        <p id="errorMsg" class="text-rose-500 text-xs font-bold mb-4 opacity-0 transition-opacity">Incorrect PIN. Please try again.</p>
+        <button onclick="checkPin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95">
+            Unlock Dashboard
+        </button>
+    </div>
+  </div>
+
+  <div id="lockedContent" class="container mx-auto px-4 py-6 max-w-4xl">
     
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
             <h1 class="text-3xl font-black tracking-tight">Knoxville Budget</h1>
             <p id="lastSync" class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 italic">Waiting for sync...</p>
         </div>
-        <button id="syncBtn" onclick="syncWithSheet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95">
-            <span id="btnText">Sync from Sheets</span>
-        </button>
+        <div class="flex gap-2 w-full sm:w-auto">
+            <button id="syncBtn" onclick="syncWithSheet()" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95">
+                <span id="btnText">Sync from Sheets</span>
+            </button>
+            <button onclick="location.reload()" class="bg-slate-200 text-slate-600 px-4 py-3 rounded-xl font-bold hover:bg-slate-300">
+                Lock
+            </button>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -75,10 +110,43 @@
   <script>
     Chart.register(ChartDataLabels);
     const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDoP-8zjTmyIzsFei7-icriWqs5OGQSf-9YxPnUNpftY9SRmsoUcaVmugOrEFcyoPpNKnIMu9_5mAU/pub?output=csv';
+    const CORRECT_PIN = "3270";
     
     let budgetData = { income: [], expenses: [] };
     let chart;
 
+    // PIN LOGIC
+    function checkPin() {
+        const input = document.getElementById('pinInput');
+        const overlay = document.getElementById('pinOverlay');
+        const content = document.getElementById('lockedContent');
+        const error = document.getElementById('errorMsg');
+        const card = document.getElementById('pinCard');
+
+        if (input.value === CORRECT_PIN) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                content.style.display = 'block';
+                // Only initialize and sync AFTER content is shown to avoid layout issues
+                initChart();
+                syncWithSheet();
+            }, 500);
+        } else {
+            error.style.opacity = '1';
+            card.classList.add('shake');
+            input.value = '';
+            input.focus();
+            setTimeout(() => card.classList.remove('shake'), 400);
+        }
+    }
+
+    // Listen for Enter key on PIN input
+    document.getElementById('pinInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkPin();
+    });
+
+    // BUDGET LOGIC
     function initChart() {
       const ctx = document.getElementById('budgetChart').getContext('2d');
       chart = new Chart(ctx, {
@@ -96,11 +164,7 @@
         options: { 
             responsive: true, 
             maintainAspectRatio: false, 
-            layout: {
-                padding: {
-                    top: 30 // Extra space at the top so labels don't get cut off
-                }
-            },
+            layout: { padding: { top: 30 } },
             plugins: { 
                 legend: { display: false }, 
                 datalabels: { 
@@ -116,11 +180,7 @@
                 y: { 
                     display: false, 
                     beginAtZero: true,
-                    suggestedMax: function(context) {
-                        // Dynamically add 15% headroom to the Y-axis
-                        const max = Math.max(...context.chart.data.datasets[0].data);
-                        return max * 1.15;
-                    }
+                    suggestedMax: (context) => Math.max(...context.chart.data.datasets[0].data) * 1.15
                 },
                 x: { grid: { display: false }, border: { display: false } }
             }
@@ -131,6 +191,8 @@
     async function syncWithSheet() {
       const btn = document.getElementById('syncBtn');
       const btnText = document.getElementById('btnText');
+      if (!btn) return;
+
       btnText.innerText = 'Syncing...';
       btn.classList.add('syncing');
       
@@ -202,9 +264,6 @@
       chart.data.datasets[0].data = [monthlyNet, totalExpenses, surplus];
       chart.update();
     }
-
-    initChart();
-    syncWithSheet();
   </script>
 </body>
 </html>
