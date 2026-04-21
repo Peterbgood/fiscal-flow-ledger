@@ -94,11 +94,9 @@ function App() {
           return sum + val;
         }, 0);
       
-      // SUMMATION LOGIC: Strictly pulls only Mortgage P&I, Taxes, and Insurance
       const logMortgageTotal = items
         .filter(i => {
             const name = i.name.toLowerCase();
-            // Using more specific keywords to avoid accidental overlap with other bills
             return name === 'mortgage p&i' || 
                    name === 'mortgage taxes' || 
                    name === 'mortgage insurance' ||
@@ -109,9 +107,9 @@ function App() {
             return sum + val;
         }, 0);
 
-      const net = (calculateTotal('income') * TAX_RATE) / 12;
-      const exp = calculateTotal('expense');
-      return { net, exp, surplus: net - exp, logMortgage: logMortgageTotal };
+      const netIncome = (calculateTotal('income') * TAX_RATE) / 12;
+      const expenses = calculateTotal('expense');
+      return { netIncome, expenses, surplus: netIncome - expenses, logMortgage: logMortgageTotal };
     });
   }, [items, locations]);
 
@@ -187,7 +185,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] p-4 md:p-10 text-slate-900 font-sans">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <h1 className="text-4xl font-black tracking-tighter">Budget <span className="text-indigo-600 italic underline decoration-indigo-100 underline-offset-8">Vault</span></h1>
           <div className="flex gap-3 w-full md:w-auto">
@@ -239,18 +237,29 @@ function App() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
           {locations.map((loc, i) => (
             <div key={i} className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 group transition-all">
-              <input value={loc} onChange={(e) => { const n = [...locations]; n[i] = e.target.value; setLocations(n); }} className="w-full font-black text-lg md:text-xl outline-none bg-transparent focus:text-indigo-600" />
-              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-slate-50 space-y-4">
-                <div className="flex justify-between items-end">
+              <input value={loc} onChange={(e) => { const n = [...locations]; n[i] = e.target.value; setLocations(n); }} className="w-full font-black text-lg md:text-xl outline-none bg-transparent focus:text-indigo-600 mb-6" />
+              
+              <div className="space-y-5">
+                <div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Total Net Income</p>
+                  <p className="text-lg font-bold text-slate-700">{formatCurrency(comparisonTotals[i].netIncome)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Total Expenses</p>
+                  <p className="text-lg font-bold text-rose-500">{formatCurrency(comparisonTotals[i].expenses)}</p>
+                </div>
+                
+                <div className="pt-5 border-t border-slate-50 flex justify-between items-end">
                   <div>
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Net Surplus</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Net Surplus</p>
                     <p className="text-2xl md:text-3xl font-black tracking-tighter text-indigo-600">{formatCurrency(comparisonTotals[i].surplus)}</p>
                   </div>
                   {locations.length > 1 && <button onClick={() => setLocations(locations.filter((_, idx) => idx !== i))} className="text-slate-100 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity pb-2">✕</button>}
                 </div>
-                <div className="bg-slate-50 p-3 rounded-2xl">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">PITI (Log Sum)</p>
-                    <p className="text-sm font-black text-slate-900">{formatCurrency(comparisonTotals[i].logMortgage)}</p>
+
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">[mortgage]</p>
+                    <p className="text-sm font-black text-black">{formatCurrency(comparisonTotals[i].logMortgage)}</p>
                 </div>
               </div>
             </div>
