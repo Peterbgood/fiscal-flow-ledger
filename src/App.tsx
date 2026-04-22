@@ -20,7 +20,8 @@ interface BudgetItem {
 
 const TAX_RATE = 0.7253; 
 const CORRECT_PIN = "3270";
-const FIXED_LOCATIONS = ['Knoxville', 'Clearwater', 'Charlotte', 'Wesley Chapel'];
+// UPDATED: Location Name Change
+const FIXED_LOCATIONS = ['Knoxville', 'Clearwater', 'Charlotte', 'Petesville'];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
@@ -35,7 +36,7 @@ function App() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [showMortgage, setShowMortgage] = useState(false);
-  const [showForm, setShowForm] = useState(false); // NEW: Toggle state for the form
+  const [showForm, setShowForm] = useState(false);
   
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -81,7 +82,6 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Open form automatically when editing
   useEffect(() => {
     if (editingId) {
         setShowForm(true);
@@ -94,7 +94,6 @@ function App() {
       const calculateTotal = (type: ItemType) => items
         .filter(i => i.type === type)
         .reduce((sum, i) => sum + (i.amounts ? (i.amounts[locIdx] ?? i.amounts[0]) : (i.amount || 0)), 0);
-      
       const netIncome = (calculateTotal('income') * TAX_RATE) / 12;
       const expenses = calculateTotal('expense');
       return { netIncome, expenses, surplus: netIncome - expenses };
@@ -123,7 +122,7 @@ function App() {
       await addDoc(collection(db, "budget"), { ...payload, order: maxOrder + 1, notes: '' });
     }
     setForm({ name: '', amounts: locations.map(() => ''), type: form.type });
-    setShowForm(false); // Hide form after save
+    setShowForm(false);
   };
 
   const moveItem = async (item: BudgetItem, direction: 'up' | 'down') => {
@@ -208,7 +207,6 @@ function App() {
           ))}
         </div>
 
-        {/* NEW: Centered Add Button */}
         <div className="flex justify-center mb-12">
             {!showForm ? (
                 <button 
@@ -228,7 +226,6 @@ function App() {
         </div>
 
         <div className="flex flex-col gap-12">
-          {/* Conditional Form Overlay */}
           {showForm && (
             <div className="w-full max-w-2xl mx-auto animate-in fade-in slide-in-from-top-4 duration-300">
                 <form ref={formRef} onSubmit={handleSubmit} className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] shadow-xl space-y-6 border border-slate-50">
@@ -254,7 +251,6 @@ function App() {
             </div>
           )}
 
-          {/* Centered Line Items */}
           <div className="w-full max-w-5xl mx-auto space-y-12">
             {(['income', 'expense'] as const).map((type) => (
               <section key={type} className="bg-white rounded-[2rem] md:rounded-[3.5rem] shadow-sm overflow-hidden border border-slate-100">
@@ -276,10 +272,17 @@ function App() {
                             </div>
                             <span className={`font-bold text-lg md:text-base truncate ${item.amounts?.some(v => v !== item.amounts[0]) ? 'text-indigo-600' : 'text-slate-800'}`}>{item.name}</span>
                         </div>
+                        {/* MOBILE ACTION BUTTONS (RESTORED) */}
+                        <div className="flex md:hidden gap-3">
+                            <button onClick={() => { setEditingId(item.id); setForm({ name: item.name, amounts: item.amounts ? item.amounts.map(String) : [String(item.amount || '')], type: item.type }); }} className="p-2 bg-slate-50 rounded-full text-slate-400">✎</button>
+                            <button onClick={() => deleteDoc(doc(db, "budget", item.id))} className="p-2 bg-slate-50 rounded-full text-rose-300">✕</button>
+                        </div>
                       </div>
-                      <div className="flex-1 w-full flex flex-wrap md:grid gap-3 md:gap-6 mt-2 md:mt-0" style={{ gridTemplateColumns: `repeat(${locations.length}, minmax(0, 1fr))` }}>
+                      
+                      {/* FIXED: Vertical stacking on mobile (flex-col), Grid on desktop (md:grid) */}
+                      <div className="flex-1 w-full flex flex-col md:grid gap-2 md:gap-6 mt-2 md:mt-0" style={{ gridTemplateColumns: `repeat(${locations.length}, minmax(0, 1fr))` }}>
                         {locations.map((loc, lIdx) => (
-                          <div key={lIdx} className="flex flex-row md:flex-col justify-between md:justify-center items-center bg-slate-50 md:bg-transparent px-4 py-2 md:p-0 rounded-xl flex-1">
+                          <div key={lIdx} className="flex flex-row md:flex-col justify-between md:justify-center items-center bg-slate-50/50 md:bg-transparent px-4 py-3 md:p-0 rounded-xl flex-1 border border-slate-100 md:border-0">
                             <span className="md:hidden text-[9px] font-black uppercase text-slate-400 tracking-widest mr-2">{loc}</span>
                             <span className={`font-black text-sm whitespace-nowrap ${lIdx === 0 ? 'text-slate-400' : 'text-black'}`}>
                                 {formatCurrency(item.amounts ? (item.amounts[lIdx] ?? item.amounts[0]) : (item.amount || 0))}
@@ -287,6 +290,7 @@ function App() {
                           </div>
                         ))}
                       </div>
+
                       <div className="hidden md:flex w-20 justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => { setEditingId(item.id); setForm({ name: item.name, amounts: item.amounts ? item.amounts.map(String) : [String(item.amount || '')], type: item.type }); }} className="text-slate-300 hover:text-indigo-600">✎</button>
                         <button onClick={() => deleteDoc(doc(db, "budget", item.id))} className="text-slate-300 hover:text-rose-500">✕</button>
