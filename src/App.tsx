@@ -21,13 +21,18 @@ const FIXED_LOCATIONS = ['Knoxville', 'Clearwater', 'Charlotte', 'Petesville'];
 const getIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('rent') || n.includes('mortgage') || n.includes('home')) return '🏠';
-  if (n.includes('car') || n.includes('auto') || n.includes('gas') || n.includes('insurance')) return '🚗';
-  if (n.includes('food') || n.includes('grocery') || n.includes('eat') || n.includes('restaurant')) return '🍕';
+  if (n.includes('model') || n.includes('volvo') || n.includes('gas')) return '🚗';
+  if (n.includes('food') || n.includes('groceries') || n.includes('eat') || n.includes('restaurant')) return '🍽️';
   if (n.includes('water') || n.includes('electric') || n.includes('utilit') || n.includes('trash')) return '⚡';
-  if (n.includes('phone') || n.includes('internet') || n.includes('wifi') || n.includes('netflix')) return '📱';
+  if (n.includes('phone') || n.includes('cell') || n.includes('wifi')) return '📱';
+  if (n.includes('beer') || n.includes('beers') || n.includes('soda') || n.includes('water')) return '🍻';
   if (n.includes('gym') || n.includes('health') || n.includes('doctor')) return '💪';
+  if (n.includes('take')) return '🍕';
+  if (n.includes('insurance')) return '🛟';
+  if (n.includes('philo') || n.includes('netflix') || n.includes('hbo')) return '📺';
+   if (n.includes('internet')) return '🛜';
   if (n.includes('wife') || n.includes('husband') || n.includes('salary') || n.includes('paycheck')) return '💰';
-  if (n.includes('dog') || n.includes('cat') || n.includes('pet')) return '🐾';
+  if (n.includes('tucker') || n.includes('odie') || n.includes('pet')) return '🐾';
   return '📦'; // Default icon
 };
 
